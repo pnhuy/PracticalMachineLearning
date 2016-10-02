@@ -1,0 +1,106 @@
+---
+title: "Practical Machine Learning Assignment"
+author: "Huy Pham"
+date: "October 2, 2016"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, cache = TRUE)
+```
+
+# Overview of data
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement – a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. More information is available from the website here: http://groupware.les.inf.puc-rio.br/har (see the section on the Weight Lifting Exercise Dataset).
+
+# Loading data and related libraries
+
+We get the data spreadsheet from cloud and store it in 2 variable: pml.training and pml.testing.
+
+```{r}
+library(caret)
+library(rattle)
+library(rpart.plot)
+library(rpart)
+pml.training ="https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
+pml.testing  ="https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
+
+training = read.csv(pml.training)
+train.dt <-  training
+testing = read.csv(pml.testing)
+```
+
+
+# Data split
+
+Afterthat, we do some data cleaning including: removing identical variables, nearly zero variables and NA features.
+The final data is splited into training set (70%) and validating set (30%).
+```{r}
+#Remove identical variables
+training <- training[,-c(1:7)]
+
+#Nearly zero variables
+zerovar <- nearZeroVar(training)
+training <- training[,-zerovar]
+
+#Nearly NA removing
+training <- training[, (colSums(is.na(training))==0)]
+
+#Partitioning
+inTrain = createDataPartition(training$classe, p=0.7, list=FALSE)
+trainset = training[inTrain,]
+valset = training[-inTrain,]
+```
+
+# Classification 
+First of all, we do build the classification model based on training set by using method "rpart" in caret library.
+The training is performed with cross-validation.
+
+```{r}
+set.seed(123)
+mod <- train(classe~., data=trainset, method="rpart", trControl = trainControl(method="cv", number=5))
+```
+
+Here is the illustration of classification model.
+```{r}
+fancyRpartPlot(mod$finalModel)
+```
+
+This model have low accuracy:
+```{r}
+pred <- predict(mod, valset)
+conf.mt <- confusionMatrix(pred, valset$classe)
+conf.mt$table
+conf.mt$overall
+```
+
+#Boosting
+
+We also perform boosting algorithms when making the model:
+
+```{r, message=FALSE, warning=FALSE, include=FALSE}
+#GBM model
+mod.gbm <- train(classe~., method="gbm", data=trainset, trControl = trainControl(method="cv", number=5))
+```
+
+The new model have higher accuracy:
+```{r}
+##Accuracy, out of sample error 
+pred.gbm <- predict(mod.gbm, valset)
+conf.mt.gbm <- confusionMatrix(pred.gbm, valset$classe)
+conf.mt.gbm$table
+conf.mt.gbm$overall
+```
+
+The variable importance in this model:
+```{r}
+#Variable importance
+varImp(mod.gbm)
+```
+
+# Prediction
+
+So, we use the second model to predict the testing dataset:
+```{r}
+testing$classe <- as.character(predict(mod.gbm, testing))
+testing$classe
+```
