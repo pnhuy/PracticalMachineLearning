@@ -65,7 +65,8 @@ Here is the illustration of classification model.
 fancyRpartPlot(mod$finalModel)
 ```
 
-This model have low accuracy:
+## Out of sample and accuracy
+This model have low accuracy. By cross validation, we can see the out of sample in below table:
 ```{r}
 pred <- predict(mod, valset)
 conf.mt <- confusionMatrix(pred, valset$classe)
@@ -82,7 +83,8 @@ We also perform boosting algorithms when making the model:
 mod.gbm <- train(classe~., method="gbm", data=trainset, trControl = trainControl(method="cv", number=5))
 ```
 
-The new model have higher accuracy:
+## Out of sample and accuracy
+The new model have higher accuracy. The out of sample was below.
 ```{r}
 ##Accuracy, out of sample error 
 pred.gbm <- predict(mod.gbm, valset)
